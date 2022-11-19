@@ -7,7 +7,8 @@ if __name__ == '__main__':
   print("Current Directory", path)
  
   # prints parent directory
-  print(f"Parent directory(should point to media\packages): {os.path.abspath(os.path.join(path, os.pardir))}")
+  parentDirectory = os.path.abspath(os.path.join(path, os.pardir))
+  print(f"Parent directory(should point to media\packages): {parentDirectory}")
 
   #Declared here to avoid errors in debugmode
   targetColor = "0 0 0"
@@ -41,6 +42,8 @@ if __name__ == '__main__':
 
   if targetLocation != "":
       targetLocation += "/" 
+  parentDirectory = parentDirectory.replace('\\', "/")
+  targetLocation = f"{parentDirectory}/{targetLocation}"
 
   for copyFile in copyFiles:
       #Reads, parses, and copies contents of file
