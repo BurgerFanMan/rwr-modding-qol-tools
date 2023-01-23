@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -67,15 +68,12 @@ public class ModelDrawer : MonoBehaviour
         }
     }
 
+    //Intermediating methods
     public void DrawVoxels(XmlDocument doc)
     {
-        int startTime = System.DateTime.Now.Millisecond;
-
-        lastDiction = GetCoordinatesFromXml(doc);
-
+        int startTime = DateTime.Now.Millisecond;
         DrawVoxels(lastDiction, startTime);   
     }
-
     public void RedrawVoxels(bool preview = true)
     {
         if(lastDiction == null || (!_livePreview && !preview))
@@ -86,9 +84,11 @@ public class ModelDrawer : MonoBehaviour
         DrawVoxels(lastDiction, startTime);
     }
 
+    //Main method to draw voxels to scene
     public void DrawVoxels(Dictionary<Vector3, Color> diction, int startTime)
     {
         startTime = startTime == -1 ? System.DateTime.Now.Millisecond : startTime;
+        lastDiction = diction;
 
         if (_recenter)
         {
@@ -98,6 +98,7 @@ public class ModelDrawer : MonoBehaviour
         _voxScale = new Vector3(voxelSize, voxelSize, voxelSize);
 
         Transform newParent = _recenter ? _reposition : _voxelsObject;
+
         for (int i = 0; i < diction.Count; i++)
         {
             if (_cubeTrans.Count <= i && _cubePrefab != null)
@@ -109,7 +110,14 @@ public class ModelDrawer : MonoBehaviour
             _cubeTrans[i].localPosition = diction.ElementAt(i).Key * distMult;
             _cubeTrans[i].localScale = _voxScale;
 
-            _cubeMats[i].color = diction.ElementAt(i).Value;
+            _cubeMats[i].color = diction.ElementAt(i).Value;          
+        }
+
+        List<Transform> leftoverVoxels = new List<Transform>(_cubeTrans);
+        leftoverVoxels.RemoveRange(0, Math.Min(diction.Count, leftoverVoxels.Count));
+        foreach (Transform trans in leftoverVoxels)
+        {
+            trans.position = Vector3.zero;
         }
 
         if (_recenter)
@@ -118,10 +126,11 @@ public class ModelDrawer : MonoBehaviour
 
             foreach (Transform cube in _cubeTrans)
             {
-                center += cube.position;
+                if(!leftoverVoxels.Contains(cube))
+                    center += cube.position;
             }
 
-            center /= _cubeTrans.Count;
+            center /= _cubeTrans.Count - leftoverVoxels.Count;
 
             Vector3 moveBy = _voxelsObject.position - center;
 
@@ -134,6 +143,20 @@ public class ModelDrawer : MonoBehaviour
             $"Time taken for operation: {TimeTaken(startTime, endTime)}ms, " +
             $"Processed voxels: {diction.Count}");
     }
+    public void RecolorVoxels(List<Color> newColors)
+    {
+        if (newColors.Count != lastDiction.Count)
+            return;
+
+        for (int i = 0; i < newColors.Count; i++)
+        {
+            Vector3 key = lastDiction.ElementAt(i).Key;
+            lastDiction[key] = newColors[i];
+
+            _cubeMats[i].color = newColors[i];
+        }
+    }
+
 
     public Dictionary<Vector3, Color> GetCoordinatesFromXml(XmlDocument doc)
     {

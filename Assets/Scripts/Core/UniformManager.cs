@@ -9,13 +9,25 @@ public class UniformManager : MonoBehaviour
     [SerializeField] string[] _filenames;
     [SerializeField] string[] _displayNames;
 
-    [SerializeField] List<Color> _newColors;
     [SerializeField] Color[] _oldColors;
+    [SerializeField] List<Color> _newColors;
+    [SerializeField] List<Color> _newSecondaryColors;
+    [Range(0f, 1f)]
+    [SerializeField] List<float> _secondaryStrength;
+    [Range(0, 6)]
+    [SerializeField] int _maxSecondaryInRow;
+
+
+    [SerializeField] bool _updateColorsAutomatically;
+    public bool updateColorsAutomatically { 
+        get { return _updateColorsAutomatically; } 
+        set { _updateColorsAutomatically = value; } }
+
 
     private ModelDrawer _md;
     private Debugger _debug;
 
-    private Dictionary<Vector3, Color> _diction = new Dictionary<Vector3, Color>();
+    private List<Color> _colorList = new List<Color>();
 
     private void Start()
     {
@@ -26,70 +38,83 @@ public class UniformManager : MonoBehaviour
         {
             _newColors = _oldColors.ToList();
         }
+
+        if(_newColors.Count > _newSecondaryColors.Count)
+        {
+            _newSecondaryColors = _newColors;
+        }
     }
 
     public void UpdateColors()
     {
-        XmlDocument doc = _debug.GetXMLDoc(true);
+        Dictionary<Vector3, Color> dictionary = _md.GetCoordinatesFromXml(
+            _debug.GetXMLDoc(true, _filenames[0]));
 
-        if (doc == null)
-            return;
-
-        _diction = _md.GetCoordinatesFromXml(doc);
-
-        for(int i = 0; i < _oldColors.Length; i++)
+        if(dictionary != _md.lastDiction)
         {
-            Color oldColor = _oldColors[i];
-
-            int colorsReplaced = 0;
-            for(int a = 0; a < _diction.Values.Count; a++)
-            {
-                Color voxColor = _diction.ElementAt(a).Value;
-                if(voxColor == oldColor)
-                {
-                    _diction[_diction.ElementAt(a).Key] = _newColors[i];
-                    colorsReplaced++;
-                }
-            }
-
-            Debug.Log($"Finished replacing color. " +
-    $"Old Color: {oldColor}, New Color: {_newColors[i]} Index: {i} " +
-    $"Voxels recolored: {colorsReplaced}");
+            _md.DrawVoxels(dictionary, -1);
         }
 
-        _md.DrawVoxels(_diction, -1);
-    }
-
-    public void UpdateColors(string path)
-    {
-        _diction = _md.GetCoordinatesFromXml(_debug.GetXMLDoc(true, path));
+        _colorList = dictionary.Values.ToList();
 
         for (int i = 0; i < _oldColors.Length; i++)
         {
             Color oldColor = _oldColors[i];
 
             int colorsReplaced = 0;
-            for (int a = 0; a < _diction.Values.Count; a++)
+            int secondaryRow = 0;
+            bool streak = false;
+
+            for (int a = 0; a < _colorList.Count; a++)
             {
-                Color voxColor = _diction.ElementAt(a).Value;
+                Color voxColor = _colorList[a];
                 if (voxColor == oldColor)
                 {
-                    _diction[_diction.ElementAt(a).Key] = _newColors[i];
-                    colorsReplaced++;
+                    if ((Random.Range(0f, 1f) < _secondaryStrength[i]/(float)_maxSecondaryInRow || streak) && 
+                        !(secondaryRow > _maxSecondaryInRow && _maxSecondaryInRow != 0)) 
+                    {
+                        _colorList[a] = _newSecondaryColors[i];
+                        streak = true;
+
+                        secondaryRow++;
+                    }
+                    else
+                    {
+                        secondaryRow = secondaryRow > _maxSecondaryInRow ? 0 : secondaryRow;
+                        streak = false;
+
+                        _colorList[a] = _newColors[i];
+                    }
+
+                    colorsReplaced++;                
                 }
             }
 
-            Debug.Log($"Finished replacing color. " +
-    $"Old Color: {oldColor}, New Color: {_newColors[i]} Index: {i} " +
-    $"Voxels recolored: {colorsReplaced}");
+    //        Debug.Log($"Finished replacing color. " +
+    //$"Old Color: {oldColor}, New Color: {_newColors[i]} Index: {i} " +
+    //$"Voxels recolored: {colorsReplaced}");
         }
 
-        _md.lastDiction = _diction;
+        _md.RecolorVoxels(_colorList);
     }
 
     public void ReplaceNewColor(Color color, int index)
     {
         _newColors[index] = color;
+        if (_updateColorsAutomatically)
+            UpdateColors();
+    }
+    public void ReplaceSecondaryNewColor(Color color, int index)
+    {
+        _newSecondaryColors[index] = color;
+        if (_updateColorsAutomatically)
+            UpdateColors();
+    }
+    public void ReplaceSecondaryStrength(float newStrength, int index)
+    {
+        _secondaryStrength[index] = newStrength;
+        if (_updateColorsAutomatically)
+            UpdateColors();
     }
 
     public void AddNewColor(Color color)

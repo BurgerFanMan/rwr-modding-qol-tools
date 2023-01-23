@@ -27,19 +27,16 @@ public class Debugger : MonoBehaviour
 
     public XmlDocument GetXMLDoc(bool fromResources)
     {
-        string dir = fromResources ? _inputField.text.Trim()
+        string path = fromResources ? _inputField.text.Trim()
             : _packageDir.text.Trim() + _inputField.text.Trim();
 
         XmlDocument doc =
-            fromResources ? Files.ReadXMLFileFromResources(dir)
-            : Files.ReadXMLFile(dir);
+            fromResources ? Files.ReadXMLFileFromResources(path)
+            : Files.ReadXMLFile(path);
 
         if (doc == null && _fileNotFoundWarning != null)
         {
-            _fileNotFoundWarning.SetActive(true);
-
-            CancelInvoke("ResetWarning");
-            Invoke("ResetWarning", _warningFadeTime);
+            FileNotFound(path);
         }
 
         return doc;
@@ -53,15 +50,21 @@ public class Debugger : MonoBehaviour
 
         if (doc == null && _fileNotFoundWarning != null)
         {
-            _fileNotFoundWarning.SetActive(true);
-
-            CancelInvoke("ResetWarning");
-            Invoke("ResetWarning", _warningFadeTime);
+            FileNotFound(path);
         }
 
         return doc;
     }
 
+    void FileNotFound(string fileName)
+    {
+        Debug.Log($"File not found, {fileName}");
+
+        _fileNotFoundWarning.SetActive(true);
+
+        CancelInvoke("ResetWarning");
+        Invoke("ResetWarning", _warningFadeTime);
+    }
     void ResetWarning()
     {
         _fileNotFoundWarning.SetActive(false);

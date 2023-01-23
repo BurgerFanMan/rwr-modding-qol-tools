@@ -8,15 +8,17 @@ using UnityEngine.Events;
 public class SliderEvent : MonoBehaviour
 {
     [SerializeField] UnityEventString _onValueChanged;
+    [SerializeField] UnityEventFloatInt _onValueChangedFloatInt;
     [SerializeField] Slider _slider;
     [Range(0, 10)]
     [SerializeField] int _decimalPlaces = 2;
+    [SerializeField] int intToGive = 0;
     [SerializeField] bool _invokeOnStart = true;
 
     // Start is called before the first frame update
     void Start()
     {
-        _slider                 = _slider == null ? GetComponent<Slider>() : _slider;
+        _slider = _slider == null ? GetComponent<Slider>() : _slider;
 
         if(_slider != null) { 
             _slider.onValueChanged.AddListener(delegate { ValueChanged(); });
@@ -29,5 +31,6 @@ public class SliderEvent : MonoBehaviour
     public void ValueChanged()
     {
         _onValueChanged.Invoke(Math.Round(_slider.value, _decimalPlaces).ToString());
+        _onValueChangedFloatInt.Invoke((float)Math.Round(_slider.value, _decimalPlaces), intToGive);
     }
 }
