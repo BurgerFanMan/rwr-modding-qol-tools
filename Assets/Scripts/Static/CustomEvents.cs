@@ -35,3 +35,8 @@ public class UnityEventColorInt : UnityEvent<Color, int>
 public class UnityEventFloatInt : UnityEvent<float, int>
 {
 }
+
+[System.Serializable]
+public class UnityEventBoolInt : UnityEvent<bool, int>
+{
+}

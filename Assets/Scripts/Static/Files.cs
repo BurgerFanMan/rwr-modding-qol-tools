@@ -10,7 +10,6 @@ public static class Files
     {
         path = path.Replace(@"\", "/");
         path = path.Trim().Trim('/');
-        Debug.Log(path);
 
         if (Resources.Load(path) == null)
         {
@@ -30,7 +29,7 @@ public static class Files
         path = path.Replace(@"\", "/");
         path = path.Trim().Trim('/');
 
-        if (!File.Exists(path) || !path.Contains(".xml"))
+        if (!File.Exists(path) || !path.EndsWith(".xml"))
         {
             return null;
         }
@@ -43,14 +42,25 @@ public static class Files
         return doc;
     }
 
-    public static void WriteXMLFile(string path, string content)
+    public static void WriteFile(string path, string content)
     {
         path = path.Replace(@"\", "/");
         path = path.Trim().TrimEnd('/');
 
         string folderPath = path.Remove(path.LastIndexOf("/"));
 
-        if(File.Exists(folderPath))
+        Debug.Log(path);
+        if (Directory.Exists(folderPath))
+        {
             File.WriteAllText(path, content);
+        }
+        else
+        {
+            Debug.Log($"Folder does not exist. Folder path: {folderPath}");
+            return;
+        }
+
+        if (!File.Exists(path))
+            Debug.Log($"Write file failed. Path: {path}. Content: {content}");
     }
 }
