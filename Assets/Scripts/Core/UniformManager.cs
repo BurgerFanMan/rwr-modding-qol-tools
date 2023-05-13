@@ -12,12 +12,8 @@ public class UniformManager : MonoBehaviour
     [SerializeField] string[] _filenames;
     [SerializeField] string[] _displayNames;
     [SerializeField] bool[] _filesToInclude;
+    [SerializeField] List<TMP_Text> _filenameDisplays = new List<TMP_Text>();
     [SerializeField] TMP_Dropdown _dropdown;
-    [SerializeField] GameObject _togglePrefab;
-    [SerializeField] Transform _toggleParent;
-    [SerializeField] Vector2 _firstPrefabLocat;
-    [SerializeField] Vector2 _prefabOffset;
-
 
     [Header("Colors")]
     [SerializeField] Color[] _oldColors;
@@ -44,6 +40,12 @@ public class UniformManager : MonoBehaviour
 
     private List<Color> _colorList = new List<Color>();
 
+    public string factionName
+    {
+        get { return _factionName; }
+        set { _factionName = value; } }
+    private string _factionName = "a";
+
     private void Start()
     {
         _modelDrawer = FindObjectOfType<ModelDrawer>();
@@ -63,79 +65,18 @@ public class UniformManager : MonoBehaviour
         {
             List<TMP_Dropdown.OptionData> dataList = new List<TMP_Dropdown.OptionData>();
 
-            Vector2 offset = _firstPrefabLocat;
             for (int i = 0; i < _filenames.Count(); i++)
             {
                 string name = _filenames[i];
                 TMP_Dropdown.OptionData optionData = new TMP_Dropdown.OptionData(name);
                 dataList.Add(optionData);
-
-                GameObject toggle = Instantiate(_togglePrefab, _toggleParent, false);
-                toggle.transform.position = offset;
-                toggle.GetComponentInChildren<TMP_Text>().text = _filenames[i];
-                toggle.GetComponent<ToggleIntEvent>().intToGive = i;
-
-                offset += new Vector2(0f, _prefabOffset.y);
-                offset += (i % 7 == 0) ? new Vector2(_prefabOffset.x, 0f) : new Vector2();
             }
 
             _dropdown.AddOptions(dataList);
         }
 
         UpdateColors();
-    }
-
-    public void UpdateColorsDeprecated()
-    {
-        Dictionary<Vector3, Color> dictionary = _modelDrawer.GetCoordinatesFromXml(
-            _debugger.GetXMLDoc(true, _filenames[fileIndex]));
-
-        if(dictionary != _modelDrawer.lastDiction)
-        {
-            _modelDrawer.DrawVoxels(dictionary, -1);
-        }
-
-        _colorList = dictionary.Values.ToList();
-
-        for (int i = 0; i < _oldColors.Length; i++)
-        {
-            Color oldColor = _oldColors[i];
-
-            int colorsReplaced = 0;
-            int secondaryRow = 0;
-            bool streak = false;
-
-            for (int a = 0; a < _colorList.Count; a++)
-            {
-                Color voxColor = _colorList[a];
-                if (voxColor == oldColor)
-                {
-                    if ((Random.Range(0f, 1f) < _secondaryStrength[i]/(float)_maxSecondaryInRow || streak) && 
-                        !(secondaryRow > _maxSecondaryInRow && _maxSecondaryInRow != 0)) 
-                    {
-                        _colorList[a] = _newSecondaryColors[i];
-                        streak = true;
-
-                        secondaryRow++;
-                    }
-                    else
-                    {
-                        secondaryRow = secondaryRow > _maxSecondaryInRow ? 0 : secondaryRow;
-                        streak = false;
-
-                        _colorList[a] = _newColors[i];
-                    }
-
-                    colorsReplaced++;                
-                }
-            }
-
-    //        Debug.Log($"Finished replacing color. " +
-    //$"Old Color: {oldColor}, New Color: {_newColors[i]} Index: {i} " +
-    //$"Voxels recolored: {colorsReplaced}");
-        }
-
-        _modelDrawer.RecolorVoxels(_colorList);
+        UpdateFileDisplays();
     }
 
     public void UpdateColors()
@@ -213,8 +154,6 @@ public class UniformManager : MonoBehaviour
     {
         _newColors.Add(color);
     }
-
-
     public void ChangeFileToInclude(bool include, int index)
     {
         _filesToInclude[index] = include;
@@ -255,60 +194,115 @@ public class UniformManager : MonoBehaviour
                     attrs["a"].Value = colors[a].a.ToString();
                 }
             }
-            Files.WriteFile($"D:/{_filenames[i]}.xml", document.OuterXml);
+            Files.WriteFile($"D:/{_displayNames[i]}.xml", document.OuterXml);
+        }
+
+        GenerateModelsFiles(_filesToInclude[_filesToInclude.Length -1], _filesToInclude[_filesToInclude.Length]);
+
+        Dictionary<Vector3, Color> GetUpdatedColors(Dictionary<Vector3, Color> originalVoxels)
+        {
+            List<Color> colorList = originalVoxels.Values.ToList();
+
+            for (int i = 0; i < _oldColors.Length; i++)
+            {
+                Color oldColor = _oldColors[i];
+                Color newColor = _newColors[i];
+                Color newSecondaryColor = _newSecondaryColors[i];
+                float secondaryStrength = _secondaryStrength[i];
+                int maxSecondaryInRow = _maxSecondaryInRow;
+
+                int colorsReplaced = 0;
+                int secondaryRow = 0;
+                bool streak = false;
+
+                colorList = colorList.Select(voxColor =>
+                {
+                    if (voxColor == oldColor)
+                    {
+                        if ((Random.Range(0f, 1f) < secondaryStrength / (float)maxSecondaryInRow || streak) &&
+                            !(secondaryRow > maxSecondaryInRow && maxSecondaryInRow != 0))
+                        {
+                            voxColor = newSecondaryColor;
+                            streak = true;
+                            secondaryRow++;
+                        }
+                        else
+                        {
+                            secondaryRow = 0;
+                            streak = false;
+                            voxColor = newColor;
+                        }
+
+                        colorsReplaced++;
+                    }
+
+                    return voxColor;
+                }).ToList();
+
+                Debug.Log($"Finished replacing color. Old Color: {oldColor}, New Color: {newColor} Index: {i} Voxels recolored: {colorsReplaced}");
+            }
+
+            Dictionary<Vector3, Color> updatedVoxels = new Dictionary<Vector3, Color>();
+            List<Vector3> positions = originalVoxels.Keys.ToList();
+            for (int i = 0; i < positions.Count; i++)
+            {
+                updatedVoxels.Add(positions[i], colorList[i]);
+            }
+
+            return updatedVoxels;
         }
     }
-
-    public Dictionary<Vector3, Color> GetUpdatedColors(Dictionary<Vector3, Color> originalVoxels)
+    
+    //generates .models files
+    void GenerateModelsFiles(bool includeBasic, bool includeReg)
     {
-        List<Color> colorList = originalVoxels.Values.ToList();
+        if (includeReg) 
+        { 
+            XmlDocument modelsDoc = Files.ReadXMLFileFromResources("replace_default.models");
 
-        for (int i = 0; i < _oldColors.Length; i++)
+            ReplaceModelName(modelsDoc);
+            Files.WriteFile($"D:/{_factionName}_default.models", modelsDoc.OuterXml); 
+        }
+
+        if (includeBasic)
         {
-            Color oldColor = _oldColors[i];
-            Color newColor = _newColors[i];
-            Color newSecondaryColor = _newSecondaryColors[i];
-            float secondaryStrength = _secondaryStrength[i];
-            int maxSecondaryInRow = _maxSecondaryInRow;
+            XmlDocument modelsBasicDoc = Files.ReadXMLFileFromResources("replace_default_basic.models");
 
-            int colorsReplaced = 0;
-            int secondaryRow = 0;
-            bool streak = false;
+            ReplaceModelName(modelsBasicDoc);
+            Files.WriteFile($"D:/{_factionName}_default_basic.models", modelsBasicDoc.OuterXml);
+        }
 
-            colorList = colorList.Select(voxColor =>
+        void ReplaceModelName(XmlDocument doc)
+        {
+            for (int i = 0; i < doc.FirstChild.ChildNodes.Count; i++)
             {
-                if (voxColor == oldColor)
+                XmlNode node = doc.FirstChild.ChildNodes[i];
+
+                if (node.Name == "model")
                 {
-                    if ((Random.Range(0f, 1f) < secondaryStrength / (float)maxSecondaryInRow || streak) &&
-                        !(secondaryRow > maxSecondaryInRow && maxSecondaryInRow != 0))
-                    {
-                        voxColor = newSecondaryColor;
-                        streak = true;
-                        secondaryRow++;
-                    }
-                    else
-                    {
-                        secondaryRow = 0;
-                        streak = false;
-                        voxColor = newColor;
-                    }
-
-                    colorsReplaced++;
+                    node.Attributes["filename"].Value = 
+                        node.Attributes["filename"].Value.Replace("replace_string", _factionName);
                 }
+            }
+        }    
+    }
 
-                return voxColor;
-            }).ToList();
-
-            Debug.Log($"Finished replacing color. Old Color: {oldColor}, New Color: {newColor} Index: {i} Voxels recolored: {colorsReplaced}");
-        }
-
-        Dictionary<Vector3, Color> updatedVoxels = new Dictionary<Vector3, Color>();
-        List<Vector3> positions = originalVoxels.Keys.ToList();
-        for (int i = 0; i < positions.Count; i++)
+    void UpdateFileDisplays()
+    {
+        for (int i = 0; i < _filenameDisplays.Count; i++)
         {
-            updatedVoxels.Add(positions[i], colorList[i]);
+            _displayNames[i] = ReplaceFirst(_filenames[i], "a", _factionName);
+            _filenameDisplays[i].text = _displayNames[i];
         }
 
-        return updatedVoxels;
+        string ReplaceFirst(string text, string search, string replace)
+        {
+            int pos = text.IndexOf(search);
+            if (pos < 0)
+            {
+                return text;
+            }
+            return text.Substring(0, pos) + replace + text.Substring(pos + search.Length);
+        }
     }
 }

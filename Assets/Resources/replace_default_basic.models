@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<models>
+	<model filename="soldier_replace1.xml" />
+	<model filename="soldier_replace2.xml" />
+	<model filename="soldier_replace3.xml" />    
+
+	<model filename="soldier_a1_alt.xml">
+		<requirement class="dlc_skin" tag="supporter" />
+	</model>
+		
+	<model filename="soldier_a2_alt.xml">
+		<requirement class="dlc_skin" tag="supporter" />
+	</model>
+	
+	<model filename="soldier_a1_alt.xml">
+		<requirement class="rank" range="100 10000" />
+		<requirement class="dlc_skin" tag="supporter_high" />
+		
+	</model>
+	<model filename="soldier_a2_alt.xml">
+		<requirement class="rank" range="100 10000" />
+		<requirement class="dlc_skin" tag="supporter_high" />
+		
+	</model>		
+</models>

@@ -29,7 +29,7 @@ public static class Files
         path = path.Replace(@"\", "/");
         path = path.Trim().Trim('/');
 
-        if (!File.Exists(path) || !path.EndsWith(".xml"))
+        if (!File.Exists(path))
         {
             return null;
         }
